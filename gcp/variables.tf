@@ -230,6 +230,12 @@ variable "github_runners_types" {
     disk_provisioned_throughput = number
     image                       = string
     arch                        = string
+    # Nested virtualization, i.e. /dev/kvm inside the runner. Excluded on E2,
+    # ARM and AMD (N4D excepted), so it only makes sense on Intel N-series.
+    enable_nested_virtualization = optional(bool, false)
+    # Empty means "zone default". Nested virt needs Haswell or newer; pin it so
+    # a host that would not expose VMX is never selected.
+    min_cpu_platform = optional(string, "")
   }))
   # Similar to https://docs.github.com/en/enterprise-cloud@latest/actions/reference/runners/larger-runners
   default = [
@@ -316,6 +322,25 @@ variable "github_runners_types" {
       disk_provisioned_throughput = 0
       image                       = "ubuntu-2404-lts-amd64"
       arch                        = "amd64"
+    },
+    # Android emulator lane. Same vCPU/RAM as gcp-ubuntu-24-04-8core, but N2
+    # because E2 cannot expose /dev/kvm, which an AVD needs.
+    # Verified in this project: n2-standard with nested virt boots with
+    # /dev/kvm present and KVM_GET_API_VERSION answering, with host maintenance
+    # left at MIGRATE, so fabric's hardcoded policy needs no override.
+    {
+      name                         = "gcp-ubuntu-24-04-8core-nested"
+      instance_type                = "n2-standard-8"
+      vcpu                         = 8
+      memory                       = 32
+      disk_type                    = "pd-ssd"
+      disk_size                    = 300
+      disk_provisioned_iops        = 0
+      disk_provisioned_throughput  = 0
+      image                        = "ubuntu-2404-lts-amd64"
+      arch                         = "amd64"
+      enable_nested_virtualization = true
+      min_cpu_platform             = "Intel Cascade Lake"
     },
     {
       name                        = "gcp-ubuntu-24-04-16core"
@@ -562,5 +587,18 @@ variable "github_runners_types" {
       contains(["amd64", "arm64"], config.arch)
     ])
     error_message = "All arch values must be either 'amd64' or 'arm64'."
+  }
+
+  # E2, ARM and AMD are excluded from nested virtualization by Compute Engine
+  # (N4D excepted), so a true flag on those families yields a template that
+  # boots without /dev/kvm and fails opaquely, far from here.
+  validation {
+    condition = alltrue([
+      for config in var.github_runners_types :
+      !config.enable_nested_virtualization || can(
+        regex("^(n1|n2|n4|c2|c3)-", config.instance_type)
+      )
+    ])
+    error_message = "enable_nested_virtualization requires an Intel N-series or C-series machine type; E2, ARM and AMD are excluded."
   }
 }

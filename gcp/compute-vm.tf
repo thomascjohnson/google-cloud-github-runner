@@ -16,6 +16,9 @@ module "github-runners-vm-templates" {
   name          = each.value.name
   description   = "GitHub Actions runner template (${upper(each.value.arch)}), ${each.value.vcpu} vCPU, ${each.value.memory} GB memory, ${each.value.disk_size} GB SSD (Terraform-managed)"
   instance_type = each.value.instance_type
+  min_cpu_platform = (
+    each.value.min_cpu_platform == "" ? null : each.value.min_cpu_platform
+  )
 
   network_interfaces = [{
     network    = module.vpc-github-runners.self_link
@@ -35,6 +38,20 @@ module "github-runners-vm-templates" {
 
   options = {
     termination_action = "DELETE"
+    # Null for every lane that does not ask for it, so existing templates keep
+    # their current plan. Nested virt does not need onHostMaintenance=TERMINATE
+    # here - verified on n2 in this project with the policy left at MIGRATE.
+    #
+    # enable_turbo_mode must be stated, not omitted. Fabric declares the inner
+    # attributes as optional(bool) with no default, so an omitted one is null,
+    # and template.tf feeds it straight into a ternary condition - which fails
+    # the plan with "Null condition" rather than treating null as false.
+    advanced_machine_features = (
+      each.value.enable_nested_virtualization ? {
+        enable_nested_virtualization = true
+        enable_turbo_mode            = false
+      } : null
+    )
     # https://docs.github.com/en/actions/reference/limits#existing-system-limits
     max_run_duration = {
       seconds = var.github_runners_max_run_duration
