@@ -1,4 +1,20 @@
+# Deny-all allowlist: ONLY the paths explicitly re-included below can enter the
+# build context. Everything else is unreachable no matter what a developer has
+# lying around in their working tree — notably the host `.venv` (~150MB of
+# macOS/arm64 binaries that would corrupt the Linux venv built in stage 1),
+# plus `.git`, `.env`, `*.pem` private keys, `gcp/` Terraform, `tests/`, `.github/`
+# and the docs. This is why `COPY . .` is safe here.
 **
+
+# Application code and dependency manifests — the only things the image needs.
 !app/**
 !run.py
-!requirements.txt
+!pyproject.toml
+!uv.lock
+!.python-version
+
+# Bytecode scrubbing, deliberately listed AFTER the allowlist so it takes
+# precedence (in .dockerignore the last matching rule wins): without these,
+# `!app/**` would re-admit stale host `__pycache__`/*.pyc from the tree.
+**/__pycache__
+**/*.py[cod]
