@@ -45,12 +45,32 @@ The infrastructure is managed via Terraform.
 
 *   **Backend:** Python, Flask, Google Cloud SDK
 *   **Frontend:** HTML, Jinja, JavaScript
+*   **Dependency Management:** uv (`pyproject.toml` + committed `uv.lock`)
+
+## Python Dependency Management
+
+Dependencies are managed with [uv](https://docs.astral.sh/uv/). There are no
+`requirements*.txt` files.
+
+*   **Runtime deps:** `[project.dependencies]` in `pyproject.toml`
+*   **Dev deps:** `[dependency-groups.dev]` in `pyproject.toml`
+*   **Lockfile:** `uv.lock` is committed and must stay in sync — always commit both
+    files when changing dependencies (`uv add`/`uv remove` do this for you)
+*   **Never** run bare `pip install`; use `uv add <pkg>` (updates the lock) or
+    `uv run <cmd>` to execute inside the project environment
+*   **Install/update the environment:** `uv sync` (adds dev deps) or
+    `uv sync --frozen` (exact lockfile, used by CI and Docker)
+*   **Python version:** pinned to 3.14 in `.python-version` and
+    `requires-python`; uv provisions it automatically
+*   This is an application, not a library: `[tool.uv] package = false` means
+    `uv sync` installs dependencies only and never builds the project itself
 
 ## Python Coding Style
 
 Follow these coding style rules when writing Python code:
 
-*   **Linter:** Code must pass `flake8 --ignore=W292,W503 --max-line-length=127 --show-source --statistics *.py app/*.py app/routes/*.py app/services/*.py app/clients/*.py app/utils/*.py tests/*.py tests/integration/*.py tests/unit/*.py`
+*   **Linter:** Code must pass `uv run flake8 .`
+    (settings live in `.flake8` — equivalent to `flake8 --ignore=W292,W503 --max-line-length=127 --show-source --statistics`; flake8 cannot read `pyproject.toml`, which is why `.flake8` exists)
 *   **Line Length:** Maximum line length is 127 characters
 *   **Blank Lines:** No blank line should contain whitespace (trailing whitespace is not allowed)
 *   **End of File:** W292 is ignored (no blank line required at end of file)
@@ -79,18 +99,21 @@ Follow these guidelines when working with tests:
 
 *   **Test Framework:** Use pytest for all test cases
 *   **Test Location:** Write test cases in the `tests/` directory
-*   **Running Tests:** Always run tests after making changes using `python -m pytest tests/ -v`
+*   **Running Tests:** Always run tests after making changes using `uv run pytest tests/ -v`
 *   **Test Coverage:** When adding new features or modifying existing code, write corresponding test cases
 *   **Test Verification:** After writing test cases, run them to ensure they pass
+
+pytest and coverage settings live in `pyproject.toml`
+(`[tool.pytest.ini_options]`, `[tool.coverage.*]`); coverage is enabled by default.
 
 Example commands:
 ```bash
 # Run all tests
-python -m pytest tests/ -v
+uv run pytest
 
 # Run specific test file
-python -m pytest tests/test_api.py -v
+uv run pytest tests/unit/test_app.py -v
 
-# Run tests with coverage
-python -m pytest tests/ --cov
+# Run tests with coverage (already on by default)
+uv run pytest tests/ --cov
 ```

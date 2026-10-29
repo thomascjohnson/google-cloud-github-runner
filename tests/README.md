@@ -10,7 +10,11 @@ This directory contains the test suite for the Python GitHub Actions Runners Man
 
 ## Running Tests
 
-Ensure you have the development dependencies installed and your virtual environment activated.
+Ensure you have the development dependencies installed:
+
+```bash
+uv sync
+```
 
 ### Run All Tests
 
