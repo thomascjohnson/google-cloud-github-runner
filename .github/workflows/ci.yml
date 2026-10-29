@@ -16,24 +16,21 @@ jobs:
       - name: 🛎️ Checkout
         uses: actions/checkout@v7
 
-      - name: 🐍 Set up Python
-        uses: actions/setup-python@v7
+      - name: 🐍 Set up uv
+        uses: astral-sh/setup-uv@v6
         with:
-          python-version: '3.14'
-          cache: 'pip'
+          enable-cache: true
 
       - name: 📥 Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+        run: uv sync --frozen
 
       - name: 🔍 Lint with flake8
         run: |
-          flake8 --ignore=W292,W503 --max-line-length=127 --show-source --statistics *.py app/*.py app/routes/*.py app/services/*.py app/clients/*.py app/utils/*.py tests/*.py tests/integration/*.py tests/unit/*.py
+          uv run flake8 .
 
       - name: 🧪 Run tests
         run: |
-          python -m pytest tests/ --cov
+          uv run pytest tests/ --cov
 
   terraform:
     name: "Terraform 🏗️"
