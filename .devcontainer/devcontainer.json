@@ -4,9 +4,10 @@
 	"customizations": {
 		"vscode": {
 			"settings": {
-				"python.defaultInterpreterPath": "/usr/bin/python3",
+				"python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
 				"python.linting.enabled": true,
-				"python.linting.pylintEnabled": true,
+				"python.linting.flake8Enabled": true,
+				"python.linting.pylintEnabled": false,
 				"python.envFile": "${workspaceFolder}/.env"
 			},
 			"extensions": [
@@ -22,13 +23,12 @@
 		"PYTHONPATH": "/workspace"
 	},
 	"onCreateCommand": "PATH=$HOME/.local/bin:$PATH && sudo apt update",
-	"postCreateCommand": "figlet 'Cloud Tools' && devcontainer-info",
-	// Podman specific settings
+	"postCreateCommand": "curl -LsSf https://astral.sh/uv/install.sh | sh && export PATH=\"$HOME/.local/bin:$PATH\" && uv sync && figlet 'Cloud Tools' && devcontainer-info",
 	"remoteUser": "vscode",
 	"workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
 	"workspaceFolder": "/workspace",
 	"runArgs": [
-		"--userns=keep-id"  // Causes issue with uid mappings on host, which we need for git to work properly - files are owned by random uids due to the uid mapping
+		"--userns=keep-id"
 	],
 	"containerEnv": {
 		"HOME": "/home/vscode"
