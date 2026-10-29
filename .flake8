@@ -1,0 +1,21 @@
+# flake8 configuration.
+# flake8 cannot read pyproject.toml, so its settings live here.
+# `ignore` deliberately replaces the defaults (rather than `extend-ignore`) to
+# preserve the original `--ignore=W292,W503` behaviour exactly.
+[flake8]
+max-line-length = 127
+ignore = W292,W503
+show-source = True
+statistics = True
+exclude =
+    .git,
+    .venv,
+    .venv*,
+    __pycache__,
+    .pytest_cache,
+    .ruff_cache,
+    htmlcov,
+    coverage.xml,
+    .terraform,
+    build,
+    dist
