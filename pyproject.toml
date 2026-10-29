@@ -1,0 +1,65 @@
+[project]
+name = "google-cloud-github-runner"
+version = "1.0.0"
+description = "Self-hosted GitHub Actions Runners manager on Google Cloud Compute Engine"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "cryptography==50.0.2",
+    "Flask==3.1.3",
+    "google-cloud-compute==1.56.0",
+    "google-cloud-secret-manager==2.31.0",
+    "gunicorn==26.2.0",
+    "PyJWT==2.15.1",
+    "python-dotenv==1.2.4",
+    "requests==2.34.2",
+]
+
+[dependency-groups]
+dev = [
+    "flake8==7.4.1",
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
+    "pytest-mock==3.17.0",
+]
+
+[tool.uv]
+# This is an application, not a library: install dependencies only and
+# never build/install the project itself. `run:app` keeps working from the
+# project root.
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--cov=app",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "slow: Slow running tests",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "*/tests/*",
+    "*/conftest.py",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false

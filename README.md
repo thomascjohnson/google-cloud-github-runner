@@ -55,7 +55,7 @@ Alternatively, you can install the tools locally on your machine.
 *   **Google Cloud Project**: A GCP project with billing enabled. The **Owner role** is the easiest option for this tutorial. If the Owner role is not possible, see [gcp/README.md](gcp/README.md) for the specific roles required.
 *   **gcloud CLI**: [Download and install](https://docs.cloud.google.com/sdk/docs/install-sdk), then authenticate with your GCP account.
 *   **Terraform**: [Download and install](https://developer.hashicorp.com/terraform/downloads), than use for easy Google Cloud services deployment.
-*   **Python 3.14+**: Only needed for local development and changes to the code.
+*   **uv**: Only needed for local development and changes to the code. Install it with [the official installer](https://docs.astral.sh/uv/getting-started/installation/); it provisions the pinned **Python 3.14** interpreter from `.python-version` automatically.
 
 ## ⚠️ Cost Control and Predictability
 
@@ -245,38 +245,36 @@ To run the application locally for development or testing:
     cd google-cloud-github-runner
     ```
 
-2.  **Create Virtual Environment**:
+2.  **Install dependencies**:
+    uv creates and manages the `.venv` virtual environment for you — no separate
+    `python -m venv` step and no `pip` required:
     ```bash
-    python3 -m venv .venv
-    source .venv/bin/activate
+    uv sync
     ```
+    This installs the pinned runtime and development dependencies from `uv.lock`.
+    To activate the environment for a plain shell session, use `source .venv/bin/activate`
+    (or prefix commands with `uv run`, as shown below).
 
-3.  **Install dependencies**:
-    ```bash
-    pip install -r requirements.txt
-    pip install -r requirements-dev.txt
-    ```
-
-4.  **Set Environment Variables**:
+3.  **Set Environment Variables**:
     You need at least your GCP Project ID.
     ```bash
     export GOOGLE_CLOUD_PROJECT=your-project-id
     ```
 
-5. **Run tests**
+4. **Run tests**
     ```bash
     # Run all tests
-    pytest
+    uv run pytest
    ```
 
-6.  **Run the application**:
+5.  **Run the application**:
     ```bash
-    python run.py
+    uv run python run.py
     ```
     The app will start at `http://localhost:8080`.
 
 
-7.  **Expose to Internet (Optional)**:
+6.  **Expose to Internet (Optional)**:
     To receive webhooks from GitHub locally, use a tool like [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/):
     ```bash
     cloudflared tunnel run --token [TOKEN]

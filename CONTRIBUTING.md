@@ -61,7 +61,11 @@ This will open a new pull request to the original repository.
 Please follow these coding style rules to ensure consistency and maintainability:
 
 ### Python
-- **Linter:** Code must pass `flake8` with the following settings:
+- **Package manager:** [uv](https://docs.astral.sh/uv/). Dependencies are declared in
+  `pyproject.toml` and pinned in the committed `uv.lock`. Run Python commands via
+  `uv run ...` (never `pip install` into the ambient interpreter).
+- **Linter:** Code must pass `uv run flake8` with the following settings
+  (configured in `.flake8`, so no flags are needed on the command line):
   - `--max-line-length=127`
   - Ignore `W292` (no new line at end of file) and `W503` (line break before binary operator).
 - **Indentation:** Use **spaces**.

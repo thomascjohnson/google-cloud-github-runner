@@ -6,35 +6,33 @@ ARG PYTHON_VERSION=3.14-alpine
 # This stage builds the Python dependencies
 FROM docker.io/library/python:${PYTHON_VERSION} AS builder
 
-# Set environment variables for Python
-# PYTHONUNBUFFERED: Log messages immediately without buffering
-# PIP_DISABLE_PIP_VERSION_CHECK: Reduce runtime by disabling pip version check
-ENV PYTHONUNBUFFERED=True
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+# Pinned tag, not an ARG: some builders cannot expand args in `COPY --from`
+COPY --from=ghcr.io/astral-sh/uv:0.12.17 /uv /usr/local/bin/uv
 
-# Set the working directory in the container
+# PYTHONUNBUFFERED: Log messages immediately without buffering
+# UV_LINK_MODE=copy: Hardlinking fails across Docker filesystem layers
+# UV_PYTHON_DOWNLOADS=never: Fail instead of fetching an unpinned interpreter
+ENV PYTHONUNBUFFERED=True
+ENV UV_LINK_MODE=copy
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_PYTHON_DOWNLOADS=never
+
+# Both stages use /app so the venv's interpreter shebangs stay valid
 WORKDIR /app
 
-# Install build dependencies required for some Python packages
-RUN apk add --no-cache build-base
-
-# Copy the requirements file for the web app and install dependencies
-# Using a wheelhouse allows for faster installation in the final image
-COPY requirements.txt .
-RUN pip wheel --no-cache-dir --wheel-dir /wheels -r requirements.txt
+# Cached until pyproject.toml or uv.lock changes
+COPY pyproject.toml uv.lock .python-version ./
+RUN uv sync --frozen --no-dev --no-install-project
 
 # --- Production Stage ---
 # This stage creates the final production image
 FROM docker.io/library/python:${PYTHON_VERSION}
 
-# Set environment variables for Python
-# PYTHONUNBUFFERED: Log messages immediately without buffering
-# PIP_DISABLE_PIP_VERSION_CHECK: Reduce runtime by disabling pip version check
 ENV PYTHONUNBUFFERED=True
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # Set the port the application will run on
 ENV PORT=8080
+ENV PATH="/app/.venv/bin:${PATH}"
 # Configure Gunicorn server arguments for production
 # --bind: Bind to all network interfaces on the specified port
 # --workers: Number of worker processes
@@ -43,9 +41,7 @@ ENV PORT=8080
 # Source: https://cloud.google.com/run/docs/tips/python#optimize_gunicorn
 ENV GUNICORN_CMD_ARGS="--bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 0"
 
-# Configure Flask application settings
-# FLASK_ENV: Set the environment to production
-ENV FLASK_ENV="production"
+# Do not re-add FLASK_ENV: Flask 3.x ignores it, and DEBUG is set in create_app()
 
 # Expose the port the application runs on
 EXPOSE $PORT
@@ -56,17 +52,15 @@ WORKDIR /app
 # Create a non-root user and group for security
 RUN addgroup -S appuser && adduser -S -G appuser appuser
 
-# Copy the built Python wheels from the builder stage
-COPY --from=builder /wheels /wheels
+COPY --chown=appuser:appuser . .
 
-# Copy the application code into the container
-COPY . .
+# Copied last so it always wins, and left root-owned: appuser may read the
+# dependencies but cannot modify them
+COPY --from=builder /app/.venv /app/.venv
 
-# Install the Python dependencies from the wheels and clean up
-RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
-
-# Set appropriate permissions
-RUN chown -R appuser:appuser /app
+# The app writes .env and github-private-key.pem to its working directory,
+# so /app itself must stay writable by appuser
+RUN chown appuser:appuser /app
 
 # Switch to the non-root user for security
 USER appuser

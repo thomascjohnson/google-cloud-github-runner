@@ -5,6 +5,8 @@ updates:
     schedule:
       interval: "weekly"
 
+  # Covers pyproject.toml and uv.lock: Dependabot handles uv
+  # through the pip ecosystem.
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
