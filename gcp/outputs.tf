@@ -55,11 +55,16 @@ resource "local_file" "terraform-providers-file-gcs" {
   })
 }
 
-# Generate shell scripts to build GCE VM images for each runner type
-resource "local_file" "github-runners-images" {
-  for_each = toset(distinct([
+# Image names of every runner type, deduplicated (one build script per image)
+locals {
+  github_runners_images = toset(distinct([
     for runner in var.github_runners_types : runner.image
   ]))
+}
+
+# Generate shell scripts to build GCE VM images for each runner type
+resource "local_file" "github-runners-images" {
+  for_each = local.github_runners_images
 
   filename        = "${path.module}/build-image-${each.value}.sh"
   file_permission = "0750"
@@ -82,14 +87,18 @@ resource "local_file" "github-runners-images" {
 
 # Trigger the build of GCE VM images when the build scripts change
 resource "null_resource" "build-github-runners-images" {
-  for_each = local_file.github-runners-images
+  # Iterate the image names, not the local_file objects: spreading a whole
+  # local_file instance pulls in its deprecated `sensitive_content` attribute
+  # ("Use the `local_sensitive_file` resource instead"), which makes OpenTofu
+  # warn about a value derived from a deprecated source.
+  for_each = local.github_runners_images
 
   triggers = {
-    script_hash = sha256(each.value.content)
+    script_hash = sha256(local_file.github-runners-images[each.key].content)
   }
 
   provisioner "local-exec" {
-    command = each.value.filename
+    command = local_file.github-runners-images[each.key].filename
   }
 
   depends_on = [
